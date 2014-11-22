@@ -30,11 +30,7 @@ app.get('/poll/*', function(req,res){
 //Msg endpoint
 app.post('/msg', function(req, res){
 	message = req.body;
-	var msg = JSON.stringify(message);
-	while(clients.length > 0){
-		var client = clients.pop();
-		client.end(msg);
-	}
+	publisher.publish("chatter", JSON.stringify(message));
 	res.end();
 });
 
@@ -56,9 +52,18 @@ if (credentials.password != ''){
 subscriber.on('message', function(channel, msg) {
 	if(channel === 'chatter') {
 		while(clients.length > 0) {
-			var client = client.pop();
+			var client = clients.pop();
 			client.end(msg);
 		}
 	}
 });
 subscriber.subscribe('chatter');
+
+//clean up for client timeouts, 1 minute interval
+setInterval(function() {
+	while(clients.length > 0 ){
+		var client = clients.pop();
+		client.writeHeader(204);
+		client.end();
+	}
+}, 60000);
